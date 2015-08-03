@@ -1,0 +1,162 @@
+USE [BLISSIMPORT]
+GO
+
+/****** Object:  StoredProcedure [dbo].[JournalImport_Submodule]    Script Date: 3/08/2015 4:30:37 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+
+CREATE PROCEDURE [dbo].[JournalImport_Submodule]
+AS
+BEGIN
+SET NOCOUNT ON
+
+CREATE TABLE dbo.#Test
+	(
+	Amount money,
+	[Description] nvarchar(100),
+	TranDate datetime,
+	Bank nvarchar(50),
+	ClientId nvarchar(50),
+	Credit nvarchar(50),
+	Submodule nvarchar(50),
+	Detail nvarchar(255)
+	)
+
+BULK INSERT #Test
+FROM 'C:\Users\STEPHEN\Desktop\BULKLINK\Journal_Sub.csv'
+
+WITH
+(
+FIELDTERMINATOR = ',',
+ROWTERMINATOR = '\n'
+)
+
+
+SELECT * FROM dbo.#Test
+
+CREATE TABLE dbo.#Import	-- CREATE A MAPPING TABLE FOR SUBSEQUENT IMPORT
+	(
+	TranDate datetime,
+	Net money,
+	Description nvarchar(255),
+	ID nvarchar(20),
+	ClientId int,
+	Debit nvarchar(100),
+	Credit nvarchar(100),
+	Submodule nvarchar(50),
+	Detail nvarchar(255)	
+	)
+
+INSERT INTO dbo.#Import
+( [ClientId], [Net], [TranDate], [Debit], [Credit], [Description], [Submodule], [Detail] )					-- PERFORM YOUR MAPPING HERE
+SELECT [ClientId], [Amount], TranDate, [Bank], [Credit], [Description], [Submodule], [Detail]
+FROM dbo.#Test
+
+UPDATE dbo.#Import
+SET ID = CONCAT('GJ' , LEFT(newid(),6) ,CONCAT('_',Day(Trandate)), CONVERT(nvarchar(3), TranDate), Year(Trandate))
+
+
+DROP TABLE dbo.#Test
+
+SELECT * FROM Import1
+
+DELETE FROM CATEGORIZE
+INSERT INTO [dbo].[CATEGORIZE]						-- CONVERSION INTO TRIAL BALANCE BEGINS HERE
+SELECT  [CLIENTID] AS 'CLIENT_ID',	
+'JRNL1' AS 'TRX_TYPE',
+ID AS 'GL_ID', 
+TranDate, 
+NET AS 'Debit', 
+0 AS 'Credit', 
+DESCRIPTION,
+[Debit] AS 'COA', 
+'' AS 'TAX',
+NET AS 'NET',
+[Submodule] AS 'SubModule',
+[Detail] AS 'Detail'
+
+FROM [dbo].[#Import]
+
+WHERE NET >= 0
+
+UNION ALL
+
+SELECT   [CLIENTID] AS 'CLIENT_ID',
+'JRNL2' AS 'TRX_TYPE',
+ID AS 'GL_ID', 
+TranDate, 
+0 AS 'Debit', 
+NET AS 'Credit', 
+DESCRIPTION,
+[Credit] AS 'COA', 
+'' AS 'TAX',
+NET*-1 AS 'NET',
+[Submodule] AS 'SubModule',
+[Detail] AS 'Detail'
+
+FROM [dbo].[#Import]
+
+WHERE NET >= 0
+
+UNION ALL
+
+SELECT   [CLIENTID] AS 'CLIENT_ID',
+'JRNL3' AS 'TRX_TYPE',
+ID AS 'GL_ID', 
+TranDate, 
+0 AS 'Debit', 
+NET*-1 AS 'Credit', 
+DESCRIPTION,
+[Debit] AS 'COA', 
+'' AS 'TAX',
+NET AS 'NET',
+[Submodule] AS 'SubModule',
+[Detail] AS 'Detail'
+
+FROM [dbo].[#Import]
+
+WHERE NET < 0
+
+UNION ALL
+
+SELECT   [CLIENTID] AS 'CLIENT_ID',
+'JRNL4' AS 'TRX_TYPE',
+ID AS 'GL_ID', 
+TranDate, 
+NET*-1 AS 'Debit', 
+0 AS 'Credit', 
+DESCRIPTION,
+[Credit] AS 'COA',
+'' AS 'TAX',
+NET*-1 AS 'NET',
+[Submodule] AS 'SubModule',
+[Detail] AS 'Detail'
+
+FROM [dbo].[#Import]
+
+WHERE NET < 0
+
+ORDER BY TranDate, ID
+
+DROP TABLE dbo.#Import
+
+UPDATE CATEGORIZE
+SET NET = Debit - Credit
+
+SELECT * FROM CATEGORIZE
+ORDER BY CLIENT_ID, DATE, GL_ID
+
+SELECT SUM(Debit), SUM(Credit), CAST(SUM(Net) AS MONEY), CLIENT_ID FROM CATEGORIZE
+GROUP BY CLIENT_ID
+
+SET NOCOUNT OFF
+
+END
+
+GO
+
+
