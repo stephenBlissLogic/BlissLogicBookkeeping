@@ -1,0 +1,174 @@
+USE [BLISSIMPORT]
+GO
+
+/****** Object:  StoredProcedure [dbo].[BankImport]    Script Date: 3/08/2015 4:27:00 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+--	1)	Save your Excel File as a csv file.
+--		=> Ensure no header
+--		=> Understand each column's characteristic so that MSSQL table can be defined.
+--		=> Identify the location of the file to be imported.
+--		=> Ensure that dates are formated as " =TEXT([date],"yyyymmdd")
+--
+--	2)	Review the MSSQL scripts BEFORE running them
+
+--USE [BLISSIMPORT]
+CREATE PROCEDURE [dbo].[BankImport]
+AS
+BEGIN
+SET NOCOUNT ON
+
+CREATE TABLE dbo.#Test
+	(
+	Amount money,
+	[Description] nvarchar(200),
+	TranDate datetime,
+	Bank nvarchar(25),
+	ClientId nvarchar(50)
+	)
+
+BULK INSERT #Test
+FROM 'C:\Users\STEPHEN\Desktop\BULKLINK\Bank.csv'
+
+WITH
+(
+FIELDTERMINATOR = ',',
+ROWTERMINATOR = '\n'
+)
+
+
+UPDATE dbo.#Test
+SET ClientId = '150026'
+WHERE clientId = 'blisslogic'
+
+
+
+SELECT * FROM dbo.#Test
+
+CREATE TABLE dbo.#Import	-- CREATE A MAPPING TABLE FOR SUBSEQUENT IMPORT
+	(
+	TranDate datetime,
+	Net money,
+	Description nvarchar(255),
+	ID nvarchar(20),
+	ClientId int,
+	Debit nvarchar(100),
+	Credit nvarchar(100)	
+	)
+
+INSERT INTO dbo.#Import
+( [ClientId], [Net], [TranDate], [Debit], [Description] )					-- PERFORM YOUR MAPPING HERE
+SELECT [ClientId], [Amount], TranDate, [Bank], [Description]
+FROM dbo.#Test
+
+UPDATE dbo.#Import
+SET ID = CONCAT('GJ' , LEFT(newid(),6) ,CONCAT('_',Day(Trandate)), CONVERT(nvarchar(3), TranDate), Year(Trandate))
+
+DELETE FROM blissimport.dbo.Import1
+INSERT INTO blissimport.dbo.Import1					-- CHECK YOUR IMPORT TABLE FIRST
+SELECT * FROM dbo.#Import 
+
+DROP TABLE dbo.#Import
+
+DROP TABLE dbo.#Test
+
+--SELECT * FROM Import1
+
+DELETE FROM CATEGORIZE
+INSERT INTO [dbo].[CATEGORIZE]						-- CONVERSION INTO TRIAL BALANCE BEGINS HERE
+SELECT  [CLIENT_ID] AS 'CLIENT_ID',	
+'BANK' AS 'TRX_TYPE',
+ID AS 'GL_ID', 
+DATE, 
+NET AS 'Debit', 
+0 AS 'Credit', 
+DESCRIPTION,
+[BANK] AS 'COA', 
+'' AS 'TAX',
+NET AS 'NET',
+'' AS 'SubModule',
+'' AS 'Detail'
+
+FROM [dbo].[IMPORT1]
+
+WHERE NET >= 0
+
+UNION ALL
+
+SELECT   [CLIENT_ID] AS 'CLIENT_ID',
+'RECEIVE MONEY' AS 'TRX_TYPE',
+ID AS 'GL_ID', 
+DATE, 
+0 AS 'Debit', 
+NET AS 'Credit', 
+DESCRIPTION,
+'' AS 'COA', 
+'' AS 'TAX',
+NET*-1 AS 'NET',
+'' AS 'SubModule',
+'' AS 'Detail'
+
+FROM [dbo].[IMPORT1]
+
+WHERE NET >= 0
+
+UNION ALL
+
+SELECT   [CLIENT_ID] AS 'CLIENT_ID',
+'BANK' AS 'TRX_TYPE',
+ID AS 'GL_ID', 
+DATE, 
+0 AS 'Debit', 
+NET*-1 AS 'Credit', 
+DESCRIPTION,
+[BANK] AS 'COA', 
+'' AS 'TAX',
+NET AS 'NET',
+'' AS 'SubModule',
+'' AS 'Detail'
+
+FROM [dbo].[IMPORT1]
+
+WHERE NET < 0
+
+UNION ALL
+
+SELECT   [CLIENT_ID] AS 'CLIENT_ID',
+'SPENT MONEY' AS 'TRX_TYPE',
+ID AS 'GL_ID', 
+DATE, 
+NET*-1 AS 'Debit', 
+0 AS 'Credit', 
+DESCRIPTION,
+'' AS 'COA',
+'' AS 'TAX',
+NET*-1 AS 'NET',
+'' AS 'SubModule',
+'' AS 'Detail'
+
+FROM [dbo].[IMPORT1]
+
+WHERE NET < 0
+
+ORDER BY DATE, GL_ID
+
+UPDATE CATEGORIZE
+SET NET = Debit - Credit
+
+SELECT * FROM CATEGORIZE
+ORDER BY CLIENT_ID, DATE, GL_ID
+
+SELECT SUM(Debit), SUM(Credit), CAST(SUM(Net) AS MONEY), CLIENT_ID FROM CATEGORIZE
+GROUP BY CLIENT_ID
+
+SET NOCOUNT OFF
+END
+
+GO
+
+
+
