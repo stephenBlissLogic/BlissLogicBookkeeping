@@ -61,7 +61,7 @@ CREATE TABLE dbo.#Import	-- CREATE A MAPPING TABLE FOR SUBSEQUENT IMPORT
 	)
 
 INSERT INTO dbo.#Import
-( [ClientId], [Net], [TranDate], [Debit], [Description] )					-- PERFORM YOUR MAPPING HERE
+( [ClientId], [Net], [TranDate], [Debit], [Description] )	-- PERFORM YOUR MAPPING HERE
 SELECT [ClientId], [Amount], TranDate, [Bank], [Description]
 FROM dbo.#Test
 
@@ -69,7 +69,7 @@ UPDATE dbo.#Import
 SET ID = CONCAT('GJ' , LEFT(newid(),6) ,CONCAT('_',Day(Trandate)), CONVERT(nvarchar(3), TranDate), Year(Trandate))
 
 DELETE FROM blissimport.dbo.Import1
-INSERT INTO blissimport.dbo.Import1					-- CHECK YOUR IMPORT TABLE FIRST
+INSERT INTO blissimport.dbo.Import1		-- CHECK YOUR IMPORT TABLE FIRST
 SELECT * FROM dbo.#Import 
 
 DROP TABLE dbo.#Import
@@ -79,7 +79,7 @@ DROP TABLE dbo.#Test
 --SELECT * FROM Import1
 
 DELETE FROM CATEGORIZE
-INSERT INTO [dbo].[CATEGORIZE]						-- CONVERSION INTO TRIAL BALANCE BEGINS HERE
+INSERT INTO [dbo].[CATEGORIZE]			-- CONVERSION INTO TRIAL BALANCE BEGINS HERE
 SELECT  [CLIENT_ID] AS 'CLIENT_ID',	
 'BANK' AS 'TRX_TYPE',
 ID AS 'GL_ID', 
