@@ -1,0 +1,50 @@
+USE [JK_LAWYERS]
+GO
+
+/****** Object:  Table [dbo].[CATEGORIZE]    Script Date: 3/08/2015 5:00:15 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[CATEGORIZE](
+	[CLIENT_ID] [nvarchar](15) NULL,
+	[TRX_TYPE] [nvarchar](50) NULL,
+	[GL_ID] [nvarchar](255) NULL,
+	[DATE] [datetime] NULL,
+	[Debit] [float] NULL,
+	[Credit] [float] NULL,
+	[DESCRIPTION] [nvarchar](255) NULL,
+	[COA] [nvarchar](255) NULL,
+	[TAX] [nvarchar](15) NULL,
+	[NET] [float] NULL,
+	[SubModule] [nvarchar](255) NULL,
+	[Detail] [nvarchar](255) NULL
+) ON [PRIMARY]
+
+GO
+
+USE [JK_LAWYERS]
+GO
+
+/****** Object:  Table [dbo].[COA]    Script Date: 3/08/2015 5:00:25 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[COA](
+	[Account] [nvarchar](255) NULL,
+	[Type] [nvarchar](255) NULL,
+	[Group1] [nvarchar](255) NULL,
+	[GroupTax] [nvarchar](255) NULL,
+	[Group2] [nvarchar](255) NULL,
+	[Group3] [nvarchar](255) NULL,
+	[Group4] [nvarchar](255) NULL,
+	[Group5] [nvarchar](255) NULL,
+	[Group6] [nvarchar](255) NULL
+) ON [PRIMARY]
+
+GO
