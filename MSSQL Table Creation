@@ -1,4 +1,4 @@
-USE [JK_LAWYERS]
+USE [DATABASE]
 GO
 
 /****** Object:  Table [dbo].[CATEGORIZE]    Script Date: 3/08/2015 5:00:15 PM ******/
@@ -25,7 +25,7 @@ CREATE TABLE [dbo].[CATEGORIZE](
 
 GO
 
-USE [JK_LAWYERS]
+USE [DATABASE]
 GO
 
 /****** Object:  Table [dbo].[COA]    Script Date: 3/08/2015 5:00:25 PM ******/
